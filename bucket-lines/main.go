@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"rescribe.xyz/go.git/lib/hocr"
-	"rescribe.xyz/go.git/lib/line"
-	"rescribe.xyz/go.git/lib/prob"
+	"rescribe.xyz/utils/pkg/hocr"
+	"rescribe.xyz/utils/pkg/line"
+	"rescribe.xyz/utils/pkg/prob"
 )
 
 func main() {

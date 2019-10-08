@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"rescribe.xyz/go.git/lib/hocr"
+	"rescribe.xyz/utils/pkg/hocr"
 )
 
 func main() {

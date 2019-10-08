@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"rescribe.xyz/go.git/lib/line"
+	"rescribe.xyz/utils/pkg/line"
 )
 
 func getLineText(l OcrLine) (string) {

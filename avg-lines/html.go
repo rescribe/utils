@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"rescribe.xyz/go.git/lib/line"
+	"rescribe.xyz/utils/pkg/line"
 )
 
 func copylineimg(fn string, l line.Detail) error {
