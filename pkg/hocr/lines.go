@@ -5,7 +5,9 @@ package hocr
 
 import (
 	"image"
-	"image/png"
+	"image/draw"
+	_ "image/jpeg"
+	_ "image/png"
 	"io/ioutil"
 	"log"
 	"os"
@@ -48,7 +50,7 @@ func getLineText(l OcrLine) (string) {
 	return linetext
 }
 
-func parseLineDetails(h Hocr, i image.Image, name string) (line.Details, error) {
+func parseLineDetails(h Hocr, i *image.Gray, name string) (line.Details, error) {
 	lines := make(line.Details, 0)
 
 	for _, l := range h.Lines {
@@ -75,7 +77,7 @@ func parseLineDetails(h Hocr, i image.Image, name string) (line.Details, error) 
 		ln.OcrName = name
 		if i != nil {
 			var imgd line.ImgDirect
-			imgd.Img = i.(*image.Gray).SubImage(image.Rect(coords[0], coords[1], coords[2], coords[3]))
+			imgd.Img = i.SubImage(image.Rect(coords[0], coords[1], coords[2], coords[3]))
 			ln.Img = imgd
 		}
 		lines = append(lines, ln)
@@ -97,20 +99,25 @@ func GetLineDetails(hocrfn string) (line.Details, error) {
 	}
 
 	var img image.Image
+	var gray *image.Gray
 	pngfn := strings.Replace(hocrfn, ".hocr", ".png", 1)
 	pngf, err := os.Open(pngfn)
 	if err != nil {
 		log.Println("Warning: can't open image %s\n", pngfn)
 	} else {
 		defer pngf.Close()
-		img, err = png.Decode(pngf)
+		img, _, err = image.Decode(pngf)
 		if err != nil {
 			log.Println("Warning: can't load image %s\n", pngfn)
+		} else {
+			b := img.Bounds()
+			gray = image.NewGray(image.Rect(0, 0, b.Dx(), b.Dy()))
+			draw.Draw(gray, b, img, b.Min, draw.Src)
 		}
 	}
 
 	n := strings.Replace(filepath.Base(hocrfn), ".hocr", "", 1)
-	return parseLineDetails(h, img, n)
+	return parseLineDetails(h, gray, n)
 }
 
 func GetLineBasics(hocrfn string) (line.Details, error) {

@@ -74,7 +74,9 @@ func main() {
 		}
 
 		for _, l := range newlines {
-			lines = append(lines, l)
+			if l.Img != nil {
+				lines = append(lines, l)
+			}
 		}
 	}
 
