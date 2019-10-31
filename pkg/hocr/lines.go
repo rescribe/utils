@@ -16,7 +16,7 @@ import (
 	"rescribe.xyz/utils/pkg/line"
 )
 
-func getLineText(l OcrLine) (string) {
+func LineText(l OcrLine) (string) {
 	linetext := ""
 
 	linetext = l.Text
@@ -45,7 +45,6 @@ func getLineText(l OcrLine) (string) {
 		}
 	}
 	linetext = strings.TrimRight(linetext, " ")
-	linetext += "\n"
 	return linetext
 }
 
@@ -64,7 +63,7 @@ func parseLineDetails(h Hocr, i *image.Gray, name string) (line.Details, error) 
 			totalconf += c
 		}
 
-		coords, err := boxCoords(l.Title)
+		coords, err := BoxCoords(l.Title)
 		if err != nil {
 			return lines, err
 		}
@@ -72,7 +71,7 @@ func parseLineDetails(h Hocr, i *image.Gray, name string) (line.Details, error) 
 		var ln line.Detail
 		ln.Name = l.Id
 		ln.Avgconf = (totalconf / float64(num)) / 100
-		ln.Text = getLineText(l)
+		ln.Text = LineText(l)
 		ln.OcrName = name
 		if i != nil {
 			var imgd line.ImgDirect

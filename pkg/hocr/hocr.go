@@ -47,7 +47,7 @@ func wordConf(s string) (float64, error) {
 	return strconv.ParseFloat(conf[1], 64)
 }
 
-func boxCoords(s string) ([4]int, error) {
+func BoxCoords(s string) ([4]int, error) {
 	var coords [4]int
 	re, err := regexp.Compile(`bbox ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)`)
 	if err != nil {
@@ -95,7 +95,7 @@ func GetText(hocrfn string) (string, error) {
 
 
 	for _, l := range h.Lines {
-		s += getLineText(l)
+		s += LineText(l) + "\n"
 	}
 	return s, nil
 }
