@@ -36,15 +36,14 @@ func main() {
 	w.Write(fontbytes)
 	w.Close()
 
+	// This could be done with %+v in printf, but using the decimal rather than
+	// hex output saves quite a few bytes, so we do that instead.
 	fmt.Printf("[]byte{")
-	first := true
-	for _, b := range compressed.Bytes() {
-		if first {
-			fmt.Printf("%d", b)
-			first = false
-			continue
+	for i, b := range compressed.Bytes() {
+		if i > 0 {
+			fmt.Printf(", ")
 		}
-		fmt.Printf(", %d", b)
+		fmt.Printf("%d", b)
 	}
 	fmt.Printf("}\n")
 }
