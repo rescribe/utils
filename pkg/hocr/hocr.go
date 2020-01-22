@@ -127,3 +127,32 @@ func GetAvgConf(hocrfn string) (float64, error) {
 	}
 	return total / num, nil
 }
+
+// GetWordConfs is a utility function that parses a hocr
+// file and returns an array containing the confidences
+// of each word therein.
+func GetWordConfs(hocrfn string) ([]float64, error) {
+	var confs []float64
+
+	file, err := ioutil.ReadFile(hocrfn)
+	if err != nil {
+		return confs, err
+	}
+
+	h, err := Parse(file)
+	if err != nil {
+		return confs, err
+	}
+
+	for _, l := range h.Lines {
+                for _, w := range l.Words {
+                        c, err := wordConf(w.Title)
+                        if err != nil {
+                                return confs, err
+                        }
+			confs = append(confs, c)
+                }
+        }
+
+	return confs, nil
+}
