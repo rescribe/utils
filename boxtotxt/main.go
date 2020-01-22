@@ -34,6 +34,9 @@ func main() {
 		if len(s) < 1 {
 			continue
 		}
+		if s[0] == "\t" {
+			continue
+		}
 		fmt.Printf("%s", s[0])
 	}
 
