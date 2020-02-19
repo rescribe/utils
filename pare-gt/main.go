@@ -60,6 +60,41 @@ func inStrSlice(sl []string, s string) bool {
 	return false
 }
 
+// samplePrefixes selects random samples for each prefix, proportional
+// to the amount of that prefix there are in the whole set, so that a
+// total of perctosample% are sampled.
+func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) {
+	var total, sample int
+	for _, v := range prefixes {
+		total += len(v)
+	}
+
+	sample = total / perctosample
+
+	for _, prefix := range prefixes {
+		len := len(prefix)
+		if len == 1 {
+			continue
+		}
+		numtoget := int(float64(sample) / float64(total) * float64(len))
+		if numtoget < 1 {
+			numtoget = 1
+		}
+		for i:=0; i<numtoget; i++ {
+			var selected string
+			selected = prefix[rand.Int()%len]
+			// pick a different random selection if the first one is
+			// already in the filestomove slice
+			for inStrSlice(filestomove, selected) {
+				selected = prefix[rand.Int()%len]
+			}
+			filestomove = append(filestomove, selected)
+		}
+	}
+
+	return
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
@@ -86,39 +121,7 @@ func main() {
 		log.Fatalln("Failed to walk", flag.Arg(0), err)
 	}
 
-	var total, sample int
-	for _, v := range prefixes {
-		total += len(v)
-	//	fmt.Printf("\n%s:\n%s\n", i, v)
-	}
-
-	sample = total / *numtopare
-
-	// filestomove contains the names of files to move minus file extension
-	var filestomove []string
-
-	// select random samples for each prefix, proportional to
-	// the amount of that prefix there are in the whole set
-	for _, prefix := range prefixes {
-		len := len(prefix)
-		if len == 1 {
-			continue
-		}
-		numtoget := int(float64(sample) / float64(total) * float64(len))
-		if numtoget < 1 {
-			numtoget = 1
-		}
-		for i:=0; i<numtoget; i++ {
-			var selected string
-			selected = prefix[rand.Int()%len]
-			// pick a different random selection if the first one is
-			// already in the filestomove slice
-			for inStrSlice(filestomove, selected) {
-				selected = prefix[rand.Int()%len]
-			}
-			filestomove = append(filestomove, selected)
-		}
-	}
+	filestomove := samplePrefixes(*numtopare, prefixes)
 
 	for _, f := range filestomove {
 		fmt.Println("Moving ground truth", f)
