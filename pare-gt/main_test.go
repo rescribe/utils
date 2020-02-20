@@ -56,9 +56,9 @@ func TestSamplePrefixes(t *testing.T) {
 		perc     int
 		expected []string
 	}{
-		//{1, []string{""}}, // TODO: fix this; currently causes hang
-		{10, []string{"1471-Orthographia-Tortellius_000019.txt", "Kallimachos_1509-ShipOfFools-Barclay_00122.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_13_9033333333333333.txt"}},
-		{20, []string{"1471-Orthographia-Tortellius_00002.txt", "Kallimachos_1509-ShipOfFools-Barclay_00126.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_11_27.txt"}},
+		{1, []string{"1471-Orthographia-Tortellius_000019.txt", "Kallimachos_1509-ShipOfFools-Barclay_00122.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_13_9033333333333333.txt"}},
+		{10, []string{"1471-Orthographia-Tortellius_00002.txt", "Kallimachos_1509-ShipOfFools-Barclay_00126.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_11_27.txt"}},
+		{20, []string{"1471-Orthographia-Tortellius_00008.txt", "1471-Orthographia-Tortellius_000017.txt", "1471-Orthographia-Tortellius_00006.txt", "Kallimachos_1509-ShipOfFools-Barclay_00126.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_11_27.txt", "buckets_1678_DuHAMEL_PhilosophiaVetusEtNova_Vol4_0008_bin0.4-copy_line_1_10_59125.txt"}},
 	}
 
 	for _, c := range cases {
@@ -70,7 +70,7 @@ func TestSamplePrefixes(t *testing.T) {
 			}
 			for i, v := range c.expected {
 				if actual[i] != v {
-					t.Fatalf("Difference in expected and actual files (at least in number %d of actual):\n\nExpected:\n%s\n\nActual:\n%s\n", i, c.expected, actual)
+					t.Fatalf("Difference in expected and actual files (first difference is in index %d of actual):\n\nExpected:\n%s\n\nActual:\n%s\n", i, c.expected, actual)
 				}
 			}
 		})

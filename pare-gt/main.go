@@ -74,7 +74,7 @@ func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) 
 		keys = append(keys, i)
 	}
 
-	sample = total / perctosample
+	sample = (total * perctosample ) / 100
 
 	// This ensures the map is looped over deterministically
 	sort.Strings(keys)
@@ -85,6 +85,9 @@ func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) 
 			continue
 		}
 		numtoget := int(float64(sample) / float64(total) * float64(len))
+		if numtoget >= len {
+			numtoget = len - 1
+		}
 		if numtoget < 1 {
 			numtoget = 1
 		}
