@@ -25,7 +25,7 @@ type Prefixes = map[string][]string
 
 // walker adds any .txt path to prefixes map, under the appropriate
 // prefix (blank if no '-' separator was found)
-func walker(prefixes *Prefixes) filepath.WalkFunc{
+func walker(prefixes *Prefixes) filepath.WalkFunc {
 	return func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -80,7 +80,7 @@ func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) 
 		if numtoget < 1 {
 			numtoget = 1
 		}
-		for i:=0; i<numtoget; i++ {
+		for i := 0; i < numtoget; i++ {
 			var selected string
 			selected = prefix[rand.Int()%len]
 			// pick a different random selection if the first one is
@@ -127,9 +127,9 @@ func main() {
 		fmt.Println("Moving ground truth", f)
 		b := path.Base(f)
 		for _, ext := range []string{".txt", ".png"} {
-			err = os.Rename(f + ext, path.Join(flag.Arg(1), b + ext))
+			err = os.Rename(f+ext, path.Join(flag.Arg(1), b+ext))
 			if err != nil {
-				log.Fatalln("Error moving file", f + ext, err)
+				log.Fatalln("Error moving file", f+ext, err)
 			}
 		}
 	}
