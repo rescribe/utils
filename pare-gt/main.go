@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sort"
+	"strings"
 )
 
 const usage = `Usage: pare-gt [-n num] gtdir movedir
@@ -74,7 +74,7 @@ func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) 
 		keys = append(keys, i)
 	}
 
-	sample = (total * perctosample ) / 100
+	sample = (total * perctosample) / 100
 
 	// This ensures the map is looped over deterministically
 	sort.Strings(keys)
