@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sort"
 )
 
 const usage = `Usage: pare-gt [-n num] gtdir movedir
@@ -65,13 +66,20 @@ func inStrSlice(sl []string, s string) bool {
 // total of perctosample% are sampled.
 func samplePrefixes(perctosample int, prefixes Prefixes) (filestomove []string) {
 	var total, sample int
-	for _, v := range prefixes {
+	var keys []string
+	for i, v := range prefixes {
 		total += len(v)
+		// needed for determinism
+		sort.Strings(prefixes[i])
+		keys = append(keys, i)
 	}
 
 	sample = total / perctosample
 
-	for _, prefix := range prefixes {
+	// This ensures the map is looped over deterministically
+	sort.Strings(keys)
+	for _, key := range keys {
+		prefix := prefixes[key]
 		len := len(prefix)
 		if len == 1 {
 			continue
