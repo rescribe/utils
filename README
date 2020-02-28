@@ -1,0 +1,17 @@
+# rescribe.xyz/utils
+
+This repository contains miscellaneous commands and small packages
+useful for the OCR of books.
+
+This is a collection of Go packages, and can be installed in the
+standard go way, by running `go get rescribe.xyz/utils/...`
+
+## Contributions
+
+Any and all comments, bug reports, patches or pull requests would
+be very welcomely received. Please email them to <nick@rescribe.xyz>.
+
+## License
+
+This package is licensed under the GPLv3. See the LICENSE file for
+more details.
