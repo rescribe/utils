@@ -1,3 +1,7 @@
+// Copyright 2019 Nick White.
+// Use of this source code is governed by the GPLv3
+// license that can be found in the LICENSE file.
+
 package hocr
 
 // TODO: Parse line name to zero pad line numbers, so they can
