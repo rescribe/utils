@@ -2,6 +2,8 @@
 // Use of this source code is governed by the GPLv3
 // license that can be found in the LICENSE file.
 
+// bucket-lines copies image-text line pairs into different directories
+// according to the average character probability for the line
 package main
 
 import (

@@ -2,6 +2,8 @@
 // Use of this source code is governed by the GPLv3
 // license that can be found in the LICENSE file.
 
+// fonttobytes outputs a font file as a series of bytes in go format,
+// allowing a font to be easily embedded into a go binary
 package main
 
 import (

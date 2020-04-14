@@ -20,6 +20,7 @@ import (
 	"rescribe.xyz/utils/pkg/line"
 )
 
+// LineText extracts the text from an OcrLine
 func LineText(l OcrLine) (string) {
 	linetext := ""
 
@@ -88,7 +89,7 @@ func parseLineDetails(h Hocr, i *image.Gray, name string) (line.Details, error) 
 }
 
 // GetLineDetails parses a hocr file and returns a corresponding
-// line.Details, including image extracts for each line.
+// line.Details, including image extracts for each line
 func GetLineDetails(hocrfn string) (line.Details, error) {
 	var newlines line.Details
 
@@ -121,7 +122,7 @@ func GetLineDetails(hocrfn string) (line.Details, error) {
 }
 
 // GetLineBasics parses a hocr file and returns a corresponding
-// line.Details, without any image extracts.
+// line.Details, without any image extracts
 func GetLineBasics(hocrfn string) (line.Details, error) {
 	var newlines line.Details
 

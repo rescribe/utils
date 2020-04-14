@@ -2,6 +2,9 @@
 // Use of this source code is governed by the GPLv3
 // license that can be found in the LICENSE file.
 
+// pare-gt moves some ground truth, ensuring that the same
+// proportions of each ground truth source are represented in the
+// moved section
 package main
 
 import (

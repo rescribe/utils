@@ -2,6 +2,8 @@
 // Use of this source code is governed by the GPLv3
 // license that can be found in the LICENSE file.
 
+// eeboxmltohocr converts the XML from an EEBO download to hOCR, which
+// can be easily incorporated into a searchable PDF
 package main
 
 import (

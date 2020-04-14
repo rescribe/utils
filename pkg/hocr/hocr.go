@@ -2,6 +2,8 @@
 // Use of this source code is governed by the GPLv3
 // license that can be found in the LICENSE file.
 
+// hocr contains structures and functions for parsing and analysing
+// hocr files
 package hocr
 
 import (
@@ -51,6 +53,7 @@ func wordConf(s string) (float64, error) {
 	return strconv.ParseFloat(conf[1], 64)
 }
 
+// BoxCoords parses bbox coordinate strings
 func BoxCoords(s string) ([4]int, error) {
 	var coords [4]int
 	re, err := regexp.Compile(`bbox ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)`)
@@ -73,6 +76,7 @@ func noText(s string) bool {
 	return len(t) == 0
 }
 
+// Parse parses a hOCR file
 func Parse(b []byte) (Hocr, error) {
 	var hocr Hocr
 
@@ -84,6 +88,7 @@ func Parse(b []byte) (Hocr, error) {
 	return hocr, nil
 }
 
+// GetText parses a hOCR file and extracts the text from it
 func GetText(hocrfn string) (string, error) {
 	var s string
 
@@ -104,6 +109,8 @@ func GetText(hocrfn string) (string, error) {
 	return s, nil
 }
 
+// GetAvgConf calculates the average confidence of a hOCR file from
+// confidences embedded in each word
 func GetAvgConf(hocrfn string) (float64, error) {
 	file, err := ioutil.ReadFile(hocrfn)
 	if err != nil {
@@ -134,7 +141,7 @@ func GetAvgConf(hocrfn string) (float64, error) {
 
 // GetWordConfs is a utility function that parses a hocr
 // file and returns an array containing the confidences
-// of each word therein.
+// of each word therein
 func GetWordConfs(hocrfn string) ([]float64, error) {
 	var confs []float64
 
