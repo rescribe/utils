@@ -4,7 +4,9 @@ This repository contains miscellaneous commands and small packages
 useful for the OCR of books.
 
 This is a collection of Go packages, and can be installed in the
-standard go way, by running `go get rescribe.xyz/utils/...`
+standard go way, by running `go get rescribe.xyz/utils/...` and documentation
+can be read with the `go doc` command or online at
+<https://pkg.go.dev/rescribe.xyz/utils>.
 
 ## Contributions
 
