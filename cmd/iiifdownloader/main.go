@@ -15,6 +15,9 @@ import (
 const usage = `Usage: iiifdownloader url
 
 Downloads all pages from a IIIF server.
+
+Currently supports the following IIIF using services:
+- BNF's Gallica (any book or page URL should work)
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
@@ -73,8 +76,15 @@ func main() {
 		if len(f) < 2 {
 			log.Fatalln("Failed to extract BNF book ID from URL")
 		}
-		bookid := f[0] + "/" + f[1]
-		bookdir = f[0] + "-" + f[1]
+		var lastpart string
+		dot := strings.Index(f[1], ".")
+		if dot == -1 {
+			lastpart = f[1]
+		} else {
+			lastpart = f[1][0:dot]
+		}
+		bookid := f[0] + "/" + lastpart
+		bookdir = f[0] + "-" + lastpart
 
 		pgurlStart = "https://gallica.bnf.fr/iiif/ark:/" + bookid + "/f"
 		pgurlEnd = "/full/full/0/native.jpg"
