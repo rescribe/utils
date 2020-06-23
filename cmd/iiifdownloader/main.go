@@ -177,10 +177,6 @@ func main() {
 				if err != nil {
 					log.Fatalf("Error removing dupilicate page %d: %v", fn, err)
 				}
-				err = os.Remove(fn2)
-				if err != nil {
-					log.Fatalf("Error removing dupilicate page %d: %v", fn2, err)
-				}
 				return
 			}
 		}
