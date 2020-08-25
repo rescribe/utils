@@ -24,6 +24,32 @@ import (
 // - loses any formatting; doesn't need to be identical, but e.g. linebreaks after elements would be handy
 // - need to handle OcrChar
 
+// dehyphenateString replaces hyphens at the end of a line
+// with the first word from the following line, and removes
+// that word from its line.
+func dehyphenateString(in string) string {
+	var newlines []string
+	lines := strings.Split(in, "\n")
+	for i, line := range lines {
+		words := strings.Split(line, " ")
+		last := words[len(words)-1]
+		// the - 2 here is to account for a trailing newline and counting from zero
+		if len(last) > 0 && last[len(last) - 1] == '-' && i < len(lines) - 2 {
+			nextwords := strings.Split(lines[i+1], " ")
+			if len(nextwords) > 0 {
+				line = line[0:len(line)-1] + nextwords[0]
+			}
+			if len(nextwords) > 1 {
+				lines[i+1] = strings.Join(nextwords[1:], " ")
+			} else {
+				lines[i+1] = ""
+			}
+		}
+		newlines = append(newlines, line)
+	}
+	return strings.Join(newlines, "\n")
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: dehyphenate [-hocr] in out\n")
@@ -63,26 +89,7 @@ func main() {
 			}
 		}
 	} else {
-		var newlines []string
-		lines := strings.Split(string(in), "\n")
-		for i, line := range lines {
-			words := strings.Split(line, " ")
-			last := words[len(words)-1]
-			// the - 2 here is to account for a trailing newline and counting from zero
-			if len(last) > 0 && last[len(last) - 1] == '-' && i < len(lines) - 2 {
-				nextwords := strings.Split(lines[i+1], " ")
-				if len(nextwords) > 0 {
-					line = line[0:len(line)-1] + nextwords[0]
-				}
-				if len(nextwords) > 1 {
-					lines[i+1] = strings.Join(nextwords[1:], " ")
-				} else {
-					lines[i+1] = ""
-				}
-			}
-			newlines = append(newlines, line)
-		}
-		finaltxt = strings.Join(newlines, "\n")
+		finaltxt = dehyphenateString(string(in))
 	}
 
 	f, err := os.Create(flag.Arg(1))
