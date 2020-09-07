@@ -21,6 +21,7 @@ Currently supports the following IIIF using services:
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
+const bsbPrefix = `https://reader.digitale-sammlungen.de/de/fs1/object/display/`
 
 func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	f1, err := os.Open(fn1)
@@ -50,6 +51,14 @@ func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	return true, nil
 }
 
+func parseMets(url string) ([]string, error) {
+	var urls []string
+	// TODO: download and parse xml;
+	// https://daten.digitale-sammlungen.de/~db/mets/bsb11274872_mets.xml
+	// mets:mets -> mets:fileSec -> mets:fileGrp USE="MAX" -> mets:file -> mets:FLocat xlink:href
+	return urls, nil
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
@@ -67,8 +76,9 @@ func main() {
 	var bookdir string
 	var pgurlStart, pgurlEnd string
 	var pgurlAltStart, pgurlAltEnd string
-	//var pgNums []int
+	var pgUrls []string
 	var noPgNums bool
+	var err error
 
 	switch {
 	case strings.HasPrefix(url, bnfPrefix):
@@ -94,16 +104,30 @@ func main() {
 		// the missing ones in less good quality from an alternative URL.
 		pgurlAltStart = "https://gallica.bnf.fr/ark:/" + bookid + "/f"
 		pgurlAltEnd = ".highres"
+	case strings.HasPrefix(url, bsbPrefix):
+		f := strings.Split(url[len(bsbPrefix):], "_")
+		if len(f) < 2 {
+			log.Fatalln("Failed to extract BNF book ID from URL")
+		}
+		bookid := f[0]
+		metsurl := "https://daten.digitale-sammlungen.de/~db/mets/" + bookid + "_mets.xml"
+
+		pgUrls, err = parseMets(metsurl)
+		if err != nil {
+			log.Fatalf("Error parsing mets url %s: %v\n", metsurl, err)
+		}
 	default:
 		log.Fatalln("Error: generic IIIF downloading not supported yet")
 	}
 
-	err := os.MkdirAll(bookdir, 0777)
+	err = os.MkdirAll(bookdir, 0777)
 	if err != nil {
 		log.Fatalf("Error creating book dir: %v\n", err)
 	}
 
-	if noPgNums {
+	if len(pgUrls) > 0 {
+		fmt.Printf("I'll do something proper with these urls: %v\n", pgUrls)
+	} else if noPgNums {
 		pgnum := 0
 		for {
 			pgnum++
