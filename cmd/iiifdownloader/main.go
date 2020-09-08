@@ -21,8 +21,9 @@ const usage = `Usage: iiifdownloader url
 Downloads all pages from a IIIF server.
 
 Currently supports the following IIIF using services:
-- BNF's Gallica (any book or page URL should work)
-- BSB / MDZ / DFG
+- BNF's Gallica
+- BSB / MDZ
+- DFG Viewer
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
@@ -294,6 +295,14 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 	}
 }
 
+func sanitiseUrl(u string) string {
+	var s string
+	s = strings.Replace(u, "//", "/", -1)
+	s = strings.Replace(s, "https:/", "https://", -1)
+	s = strings.Replace(s, "http:/", "http://", -1)
+	return s
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
@@ -306,7 +315,7 @@ func main() {
 		return
 	}
 
-	u := flag.Arg(0)
+	u := sanitiseUrl(flag.Arg(0))
 
 	var bookdir string
 	var pgurlStart, pgurlEnd string
