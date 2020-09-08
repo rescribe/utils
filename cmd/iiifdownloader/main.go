@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -21,15 +20,16 @@ const usage = `Usage: iiifdownloader url
 Downloads all pages from a IIIF server.
 
 Currently supports the following IIIF using services:
-- BNF's Gallica
-- BSB / MDZ
-- DFG Viewer
+- BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
+- BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
+- DFG Viewer      example url: http://dfg-viewer.de/show?set%5Bmets%5D=http%3A%2F%2Fdaten.digitale-sammlungen.de%2F~db%2Fmets%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
 const bsbPrefix = `https://reader.digitale-sammlungen.de/de/fs1/object/display/`
 const dfgPrefix = `http://dfg-viewer.de/`
 
+// filesAreIdentical checks whether two files are identical.
 func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	f1, err := os.Open(fn1)
 	defer f1.Close()
@@ -155,6 +155,9 @@ func parseIIIFManifest(u string) ([]string, error) {
 	return urls, nil
 }
 
+// urlToPgName returns an appropriate filename for a page, given
+// a url. This is currently optimised for BSB URLs, but will be
+// made more generic when necessary.
 func urlToPgName(u string) string {
 	safe := strings.Replace(u, "/", "_", -1)
 
@@ -170,17 +173,22 @@ func urlToPgName(u string) string {
 	name := f[len(f) - 5]
 
 	f2 := strings.Split(name, "_")
+	var numpart, pgnum string
 	if len(f2) < 2 {
-		return safe
+		numpart = name
+	} else {
+		numpart = f2[len(f2)-1]
 	}
-	pgnum, err := strconv.Atoi(f2[1])
-	if err != nil {
-		return safe
+	if len(numpart) < 4 {
+		pgnum = numpart
+	} else {
+		pgnum = numpart[len(numpart)-4:]
 	}
 
-	return fmt.Sprintf("%04d.jpg", pgnum)
+	return pgnum + ".jpg"
 }
 
+// dlPage downloads a page url to bookdir.
 func dlPage(bookdir, u string) error {
 	name := urlToPgName(u)
 	fn := path.Join(bookdir, name)
@@ -295,6 +303,8 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 	}
 }
 
+// sanitiseUrl partly sanitises a url. This is very basic,
+// but enough for us for now.
 func sanitiseUrl(u string) string {
 	var s string
 	s = strings.Replace(u, "//", "/", -1)
