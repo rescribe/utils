@@ -23,7 +23,7 @@ Downloads all pages from a IIIF server.
 Currently supports the following IIIF using services:
 - BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
 - BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
-- DFG Viewer      example url: http://dfg-viewer.de/show?set%5Bmets%5D=http%3A%2F%2Fdaten.digitale-sammlungen.de%2F~db%2Fmets%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
+- DFG Viewer      example url: http://dfg-viewer.de/show?set%%5Bmets%%5D=http%%3A%%2F%%2Fdaten.digitale-sammlungen.de%%2F~db%%2Fmets%%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
@@ -215,6 +215,9 @@ func dlPage(bookdir, u string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("Error downloading page - 404 not found - %s: %v", u, err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Error downloading page %s: %v", u, err)
 	}
@@ -242,75 +245,43 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 
 		u := fmt.Sprintf("%s%d%s", pgurlStart, pgnum, pgurlEnd)
 
-		name := urlToPgName(u)
-		fn := path.Join(bookdir, name)
-
-		_, err := os.Stat(fn)
-		if err == nil || os.IsExist(err) {
-			fmt.Printf("Skipping already present page %d\n", pgnum)
-			continue
-		}
-
-		fmt.Printf("Downloading page %s to %s\n", u, fn)
-
-		resp, err := http.Get(u)
-		if err != nil {
-			return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
-		}
-		defer resp.Body.Close()
-		switch {
-		case resp.StatusCode == http.StatusNotFound:
+		err := dlPage(bookdir, u)
+		if err != nil && strings.Index(err.Error(), "Error downloading page - 404 not found") == -1 {
 			fmt.Printf("Got 404, assuming end of pages, for page %d, %s\n", pgnum, u)
 			return nil
-		case resp.StatusCode != http.StatusOK:
-			fmt.Printf("Error downloading page %d, %s: HTTP Code %s\n", pgnum, u, resp.Status)
-
+		}
+		if err != nil && strings.Index(err.Error(), "Error downloading page") == -1 {
 			if pgurlAltStart == "" && pgurlAltEnd == "" {
 				return fmt.Errorf("No alternative URL to try, book failed (or ended, hopefully)")
 			}
 
 			fmt.Printf("Trying to redownload page %d at lower quality\n", pgnum)
 			u = fmt.Sprintf("%s%d%s", pgurlAltStart, pgnum, pgurlAltEnd)
-			resp, err = http.Get(u)
+			err = dlPage(bookdir, u)
 			if err != nil {
 				return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
 			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("Error downloading page %d, %s: HTTP Code %s\n", pgnum, u, resp.Status)
-			}
 		}
-
-		f, err := os.Create(fn)
-		defer f.Close()
-		if err != nil {
-			return fmt.Errorf("Error creating file %s: %v\n", fn, err)
-		}
-		_, err = io.Copy(f, resp.Body)
-		if err != nil {
-			return fmt.Errorf("Error writing file %s: %v\n", fn, err)
-		}
-
-		// Close once finished with, as defer won't trigger until the end of the function
-		resp.Body.Close()
-		f.Close()
 
 		// Check that the last two downloaded files aren't identical, as this
 		// can happen when there are no more pages to download.
 		if pgnum == 1 {
 			continue
 		}
-		fn2 := path.Join(bookdir, fmt.Sprintf("%04d.jpg", pgnum-1))
-		identical, err := filesAreIdentical(fn, fn2)
+		name := urlToPgName(u)
+		u2 := fmt.Sprintf("%s%d%s", pgurlStart, pgnum-1, pgurlEnd)
+		name2 := urlToPgName(u2)
+		fn1 := path.Join(bookdir, name)
+		fn2 := path.Join(bookdir, name2)
+		identical, err := filesAreIdentical(fn1, fn2)
 		if err != nil {
 			return fmt.Errorf("Error checking for files being identical: %v\n", err)
 		}
 		if identical {
 			fmt.Println("Last 2 pages were identical, looks like it's the end of the book")
-			err = os.Remove(fn)
+			err = os.Remove(fn1)
 			if err != nil {
-				return fmt.Errorf("Error removing dupilicate page %d: %v", fn, err)
+				return fmt.Errorf("Error removing dupilicate page %d: %v", fn1, err)
 			}
 			return nil
 		}
@@ -429,7 +400,10 @@ func main() {
 
 	if len(pgUrls) > 0 {
 		for _, v := range pgUrls {
-			dlPage(bookdir, v)
+			err = dlPage(bookdir, v)
+			if err != nil {
+				log.Fatalf("Error downloading page: %v\n", err)
+			}
 		}
 	} else if noPgNums {
 		err = dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd)
