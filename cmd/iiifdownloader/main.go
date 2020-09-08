@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -162,7 +163,7 @@ func urlToPgName(u string) string {
 	safe := strings.Replace(u, "/", "_", -1)
 
 	b := path.Base(u)
-	if b != "default.jpg" {
+	if b != "default.jpg" && b != "native.jpg" {
 		return b
 	}
 
@@ -185,13 +186,26 @@ func urlToPgName(u string) string {
 		pgnum = numpart[len(numpart)-4:]
 	}
 
-	return pgnum + ".jpg"
+	pgnum = strings.Replace(pgnum, "f", "", 1)
+
+	pgnumint, err := strconv.Atoi(pgnum)
+	if err != nil {
+		return pgnum + ".jpg"
+	}
+
+	return fmt.Sprintf("%04d.jpg", pgnumint)
 }
 
 // dlPage downloads a page url to bookdir.
 func dlPage(bookdir, u string) error {
 	name := urlToPgName(u)
 	fn := path.Join(bookdir, name)
+
+	_, err := os.Stat(fn)
+	if err == nil || os.IsExist(err) {
+		fmt.Printf("Skipping already present page %s\n", fn)
+		return nil
+	}
 
 	fmt.Printf("Downloading page %s to %s\n", u, fn)
 
@@ -215,9 +229,6 @@ func dlPage(bookdir, u string) error {
 		return fmt.Errorf("Error writing file %s: %v\n", fn, err)
 	}
 
-	resp.Body.Close()
-	f.Close()
-
 	return nil
 }
 
@@ -229,16 +240,19 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 	for {
 		pgnum++
 
-		fmt.Printf("Downloading page %d\n", pgnum)
+		u := fmt.Sprintf("%s%d%s", pgurlStart, pgnum, pgurlEnd)
 
-		fn := path.Join(bookdir, fmt.Sprintf("%04d.jpg", pgnum))
+		name := urlToPgName(u)
+		fn := path.Join(bookdir, name)
+
 		_, err := os.Stat(fn)
 		if err == nil || os.IsExist(err) {
 			fmt.Printf("Skipping already present page %d\n", pgnum)
 			continue
 		}
 
-		u := fmt.Sprintf("%s%d%s", pgurlStart, pgnum, pgurlEnd)
+		fmt.Printf("Downloading page %s to %s\n", u, fn)
+
 		resp, err := http.Get(u)
 		if err != nil {
 			return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
@@ -307,9 +321,9 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 // but enough for us for now.
 func sanitiseUrl(u string) string {
 	var s string
-	s = strings.Replace(u, "//", "/", -1)
-	s = strings.Replace(s, "https:/", "https://", -1)
-	s = strings.Replace(s, "http:/", "http://", -1)
+	s = strings.ReplaceAll(u, "//", "/")
+	s = strings.Replace(s, "https:/", "https://", 1)
+	s = strings.Replace(s, "http:/", "http://", 1)
 	return s
 }
 
