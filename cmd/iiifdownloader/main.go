@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -55,6 +57,9 @@ func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	return true, nil
 }
 
+// parseMets downloads and parses an XML encoded METS file,
+// returning a list of image URLs.
+// Example URL: https://daten.digitale-sammlungen.de/~db/mets/bsb10132387_mets.xml
 func parseMets(u string) ([]string, error) {
 	var urls []string
 
@@ -65,7 +70,6 @@ func parseMets(u string) ([]string, error) {
 			Files []struct {
 				Url string `xml:"href,attr"`
 			} `xml:"file>FLocat"`
-			XMLName xml.Name `xml:"fileGrp"`
 		} `xml:"fileSec>fileGrp"`
 	}
 
@@ -101,14 +105,83 @@ func parseMets(u string) ([]string, error) {
 	return urls, nil
 }
 
-func dlPage(bookdir, u string) error {
-	b := path.Base(u)
-	ext := path.Ext(u)
-	if len(ext) == 0 {
-		ext = "jpg"
+// parseIIIFManifest downloads and parses a JSON encoded IIIF
+// Manifest file, returning a list of image URLs.
+// Example URL: https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10132387/manifest
+func parseIIIFManifest(u string) ([]string, error) {
+	var urls []string
+
+	// designed to be unmarshalled by encoding/json's Unmarshal()
+	type iiifManifest struct {
+		Sequences []struct {
+			Canvases []struct {
+				Images []struct {
+					Resource struct {
+						Id string `json:"@id"`
+					}
+				}
+			}
+		}
 	}
-	field := strings.Split(b, ".")
-	name := field[0][len(field[0])-4:] + "." + ext
+
+	resp, err := http.Get(u)
+	if err != nil {
+		return urls, fmt.Errorf("Error downloading IIIF manifest %s: %v", u, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return urls, fmt.Errorf("Error downloading IIIF manifest %s: %v", u, err)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return urls, fmt.Errorf("Error reading IIIF manifest %s: %v", u, err)
+	}
+
+	v := iiifManifest{}
+	err = json.Unmarshal(b, &v)
+	if err != nil {
+		return urls, fmt.Errorf("Error parsing IIIF manifest %s: %v", u, err)
+	}
+
+	for _, canvas := range v.Sequences[0].Canvases {
+		for _, image := range canvas.Images {
+			urls = append(urls, image.Resource.Id)
+		}
+	}
+
+	return urls, nil
+}
+
+func urlToPgName(u string) string {
+	safe := strings.Replace(u, "/", "_", -1)
+
+	b := path.Base(u)
+	if b != "default.jpg" {
+		return b
+	}
+
+	f := strings.Split(u, "/")
+	if len(f) < 5 {
+		return safe
+	}
+	name := f[len(f) - 5]
+
+	f2 := strings.Split(name, "_")
+	if len(f2) < 2 {
+		return safe
+	}
+	pgnum, err := strconv.Atoi(f2[1])
+	if err != nil {
+		return safe
+	}
+
+	return fmt.Sprintf("%04d.jpg", pgnum)
+}
+
+func dlPage(bookdir, u string) error {
+	name := urlToPgName(u)
 	fn := path.Join(bookdir, name)
 
 	fmt.Printf("Downloading page %s to %s\n", u, fn)
@@ -273,11 +346,11 @@ func main() {
 		}
 		bookid := f[0]
 		bookdir = bookid
-		metsurl := "https://daten.digitale-sammlungen.de/~db/mets/" + bookid + "_mets.xml"
+		iiifurl := "https://api.digitale-sammlungen.de/iiif/presentation/v2/" + bookid + "/manifest"
 
-		pgUrls, err = parseMets(metsurl)
+		pgUrls, err = parseIIIFManifest(iiifurl)
 		if err != nil {
-			log.Fatalf("Error parsing mets url %s: %v\n", metsurl, err)
+			log.Fatalf("Error parsing IIIF manifest url %s: %v\n", iiifurl, err)
 		}
 	case strings.HasPrefix(u, dfgPrefix):
 		// dfg can have a url encoded mets url in several parts of the viewer url
