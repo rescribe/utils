@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -18,10 +20,12 @@ Downloads all pages from a IIIF server.
 
 Currently supports the following IIIF using services:
 - BNF's Gallica (any book or page URL should work)
+- BSB / MDZ / DFG
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
 const bsbPrefix = `https://reader.digitale-sammlungen.de/de/fs1/object/display/`
+const dfgPrefix = `http://dfg-viewer.de/`
 
 func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	f1, err := os.Open(fn1)
@@ -51,12 +55,88 @@ func filesAreIdentical(fn1, fn2 string) (bool, error) {
 	return true, nil
 }
 
-func parseMets(url string) ([]string, error) {
+func parseMets(u string) ([]string, error) {
 	var urls []string
-	// TODO: download and parse xml;
-	// https://daten.digitale-sammlungen.de/~db/mets/bsb11274872_mets.xml
-	// mets:mets -> mets:fileSec -> mets:fileGrp USE="MAX" -> mets:file -> mets:FLocat xlink:href
+
+	// designed to be unmarshalled by encoding/xml's Unmarshal()
+	type metsXML struct {
+		FileGrps []struct {
+			Attr string `xml:"USE,attr"`
+			Files []struct {
+				Url string `xml:"href,attr"`
+			} `xml:"file>FLocat"`
+			XMLName xml.Name `xml:"fileGrp"`
+		} `xml:"fileSec>fileGrp"`
+	}
+
+	resp, err := http.Get(u)
+	if err != nil {
+		return urls, fmt.Errorf("Error downloading mets %s: %v", u, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return urls, fmt.Errorf("Error downloading mets %s: %v", u, err)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return urls, fmt.Errorf("Error reading mets XML %s: %v", u, err)
+	}
+
+	v := metsXML{}
+	err = xml.Unmarshal(b, &v)
+	if err != nil {
+		return urls, fmt.Errorf("Error parsing mets XML %s: %v", u, err)
+	}
+
+	for _, grp := range v.FileGrps {
+		if grp.Attr == "MAX" {
+			for _, f := range grp.Files {
+				urls = append(urls, f.Url)
+			}
+		}
+	}
+
 	return urls, nil
+}
+
+func dlPage(bookdir, u string) error {
+	b := path.Base(u)
+	ext := path.Ext(u)
+	if len(ext) == 0 {
+		ext = "jpg"
+	}
+	field := strings.Split(b, ".")
+	name := field[0][len(field[0])-4:] + "." + ext
+	fn := path.Join(bookdir, name)
+
+	fmt.Printf("Downloading page %s to %s\n", u, fn)
+
+	resp, err := http.Get(u)
+	if err != nil {
+		return fmt.Errorf("Error downloading page %s: %v", u, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Error downloading page %s: %v", u, err)
+	}
+
+	f, err := os.Create(fn)
+	defer f.Close()
+	if err != nil {
+		return fmt.Errorf("Error creating file %s: %v\n", fn, err)
+	}
+	_, err = io.Copy(f, resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error writing file %s: %v\n", fn, err)
+	}
+
+	resp.Body.Close()
+	f.Close()
+
+	return nil
 }
 
 // dlNoPgNums downloads all pages, starting from zero, until either
@@ -153,7 +233,7 @@ func main() {
 		return
 	}
 
-	url := flag.Arg(0)
+	u := flag.Arg(0)
 
 	var bookdir string
 	var pgurlStart, pgurlEnd string
@@ -163,8 +243,8 @@ func main() {
 	var err error
 
 	switch {
-	case strings.HasPrefix(url, bnfPrefix):
-		f := strings.Split(url[len(bnfPrefix):], "/")
+	case strings.HasPrefix(u, bnfPrefix):
+		f := strings.Split(u[len(bnfPrefix):], "/")
 		if len(f) < 2 {
 			log.Fatalln("Failed to extract BNF book ID from URL")
 		}
@@ -186,14 +266,47 @@ func main() {
 		// the missing ones in less good quality from an alternative URL.
 		pgurlAltStart = "https://gallica.bnf.fr/ark:/" + bookid + "/f"
 		pgurlAltEnd = ".highres"
-	case strings.HasPrefix(url, bsbPrefix):
-		f := strings.Split(url[len(bsbPrefix):], "_")
+	case strings.HasPrefix(u, bsbPrefix):
+		f := strings.Split(u[len(bsbPrefix):], "_")
 		if len(f) < 2 {
 			log.Fatalln("Failed to extract BNF book ID from URL")
 		}
 		bookid := f[0]
 		bookdir = bookid
 		metsurl := "https://daten.digitale-sammlungen.de/~db/mets/" + bookid + "_mets.xml"
+
+		pgUrls, err = parseMets(metsurl)
+		if err != nil {
+			log.Fatalf("Error parsing mets url %s: %v\n", metsurl, err)
+		}
+	case strings.HasPrefix(u, dfgPrefix):
+		// dfg can have a url encoded mets url in several parts of the viewer url
+		metsNames := []string{"set[mets]", "tx_dlf[id]"}
+		var metsurl string
+		escurl, err := url.QueryUnescape(u)
+		if err != nil {
+			log.Fatalf("Error unescaping url %s: %v\n", u, err)
+		}
+		for _, v := range metsNames {
+			i := strings.Index(escurl, v)
+			if i != -1 {
+				start := i + len(v) + 1 // +1 is to pass the equals sign
+				end := strings.Index(escurl[start:], "&")
+				if end == -1 {
+					end = len(escurl)
+				} else {
+					end += start
+				}
+				metsurl = escurl[start:end]
+			}
+		}
+		if len(metsurl) == 0 {
+			log.Fatalf("No mets url found in %s\n", u)
+		}
+
+		b := path.Base(metsurl)
+		f := strings.Split(b, "_")
+		bookdir = f[0]
 
 		pgUrls, err = parseMets(metsurl)
 		if err != nil {
@@ -209,8 +322,15 @@ func main() {
 	}
 
 	if len(pgUrls) > 0 {
-		fmt.Printf("I'll do something proper with these urls: %v\n", pgUrls)
+		for _, v := range pgUrls {
+			dlPage(bookdir, v)
+		}
 	} else if noPgNums {
-		dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd)
+		err = dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd)
+		if err != nil {
+			log.Fatalf("Error downloading pages: %v\n", err)
+		}
+	} else {
+		log.Fatalf("Failed to find any pages\n")
 	}
 }
