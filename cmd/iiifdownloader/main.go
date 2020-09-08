@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-const usage = `Usage: iiifdownloader url
+const usage = `Usage: iiifdownloader [-mets] url
 
 Downloads all pages from a IIIF server.
 
@@ -24,6 +24,7 @@ Currently supports the following IIIF using services:
 - BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
 - BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
 - DFG Viewer      example url: http://dfg-viewer.de/show?set%%5Bmets%%5D=http%%3A%%2F%%2Fdaten.digitale-sammlungen.de%%2F~db%%2Fmets%%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
+
 `
 
 const bnfPrefix = `https://gallica.bnf.fr/ark:/`
@@ -164,6 +165,9 @@ func urlToPgName(u string) string {
 
 	b := path.Base(u)
 	if b != "default.jpg" && b != "native.jpg" {
+		if path.Ext(b) == "" {
+			return b + ".jpg"
+		}
 		return b
 	}
 
@@ -299,6 +303,7 @@ func sanitiseUrl(u string) string {
 }
 
 func main() {
+	forcemets := flag.Bool("mets", false, "Force METS metadata to be used (BSB / MDZ only)")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
 		flag.PrintDefaults()
@@ -352,9 +357,14 @@ func main() {
 		bookdir = bookid
 		iiifurl := "https://api.digitale-sammlungen.de/iiif/presentation/v2/" + bookid + "/manifest"
 
-		pgUrls, err = parseIIIFManifest(iiifurl)
+		if *forcemets {
+			iiifurl = "https://daten.digitale-sammlungen.de/~db/mets/" + bookid + "_mets.xml"
+			pgUrls, err = parseMets(iiifurl)
+		} else {
+			pgUrls, err = parseIIIFManifest(iiifurl)
+		}
 		if err != nil {
-			log.Fatalf("Error parsing IIIF manifest url %s: %v\n", iiifurl, err)
+			log.Fatalf("Error parsing manifest url %s: %v\n", iiifurl, err)
 		}
 	case strings.HasPrefix(u, dfgPrefix):
 		// dfg can have a url encoded mets url in several parts of the viewer url
