@@ -16,6 +16,7 @@ import (
 	"strings"
 )
 
+// TODO: add tests
 const usage = `Usage: iiifdownloader [-mets] url
 
 Downloads all pages from a IIIF server.
@@ -24,6 +25,8 @@ Currently supports the following IIIF using services:
 - BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
 - BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
 - DFG Viewer      example url: http://dfg-viewer.de/show?set%%5Bmets%%5D=http%%3A%%2F%%2Fdaten.digitale-sammlungen.de%%2F~db%%2Fmets%%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
+- IIIF Manifest (TODO)
+- METS Manifest (TODO)
 
 `
 
