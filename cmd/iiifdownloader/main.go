@@ -299,7 +299,7 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 // but enough for us for now.
 func sanitiseUrl(u string) string {
 	var s string
-	s = strings.ReplaceAll(u, "//", "/")
+	s = strings.Replace(u, "//", "/", -1)
 	s = strings.Replace(s, "https:/", "https://", 1)
 	s = strings.Replace(s, "http:/", "http://", 1)
 	return s
