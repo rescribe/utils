@@ -8,12 +8,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/xml"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +67,69 @@ func getTrainingUsed(hocrfn string) (string, error) {
 	return par.Par[0].Lang, nil
 }
 
+// getMeanStddevOfBest calculates the mean and standard deviation
+// of the confidence values of every page in bestfn, as listed in
+// conffn.
+func getMeanStddevOfBest(bestfn string, conffn string) (float64, float64, error) {
+	f, err := os.Open(conffn)
+	if err != nil {
+		return 0, 0, fmt.Errorf("Failed to open %s: %v", conffn, err)
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+
+	// create a map of confs from the conf file
+	var confs map[string]int
+	confs = make(map[string]int)
+	for s.Scan() {
+		line := s.Text()
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			continue
+		}
+		c, err := strconv.Atoi(parts[1])
+		if err != nil {
+			continue
+		}
+		fn := filepath.Base(parts[0])
+		confs[fn] = c
+	}
+
+	f, err = os.Open(bestfn)
+	if err != nil {
+		return 0, 0, fmt.Errorf("Failed to open %s: %v", bestfn, err)
+	}
+	defer f.Close()
+	s = bufio.NewScanner(f)
+
+	var bestConfs []int
+	for s.Scan() {
+		fn := s.Text()
+		c, ok := confs[fn]
+		if !ok {
+			continue
+		}
+		bestConfs = append(bestConfs, c)
+	}
+
+	var sum int
+	for _, v := range bestConfs {
+		sum += v
+	}
+	mean := float64(sum) / float64(len(bestConfs))
+
+	var a, stddev float64
+	if len(bestConfs) > 1 {
+		for _, v := range bestConfs {
+			a += (float64(v) - mean) * (float64(v) - mean)
+		}
+		variance := a / float64(len(bestConfs) - 1)
+		stddev = math.Sqrt(variance)
+	}
+
+	return mean, stddev, nil
+}
+
 // walker returns a walkfunc that checks for hocr and best files,
 // and uses them to fill the bookstats map & structure. Note that
 // the stat file is read when the best file is read, as they need
@@ -112,7 +177,14 @@ func walker(bookstats *Bookstats) filepath.WalkFunc {
 			}
 			(*bookstats)[prefix].training = training
 		case "best":
-			// TODO: read conf also and fill in mean and stddev
+			confpath := strings.Replace(fpath, "-best", "-conf", -1)
+			mean, stddev, err := getMeanStddevOfBest(fpath, confpath)
+			if err != nil {
+				log.Printf("Warning: failed to get mean & standard deviation from %s and %s: %v\n", fpath, confpath, err)
+				return nil
+			}
+			(*bookstats)[prefix].mean = mean
+			(*bookstats)[prefix].stddev = stddev
 		}
 
 		return nil
