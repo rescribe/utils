@@ -9,8 +9,10 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -34,8 +36,40 @@ type stat struct {
 }
 
 // Bookstats is a map of the stats attached to each book (key is book name)
-type Bookstats = map[string]stat
+type Bookstats = map[string]*stat
 
+type hocrPars struct {
+	Par []struct {
+		Lang string `xml:"lang,attr"`
+	} `xml:"body>div>div>p"`
+}
+
+// getTrainingUsed parses a hOCR file to find the training
+// file used to create it.
+func getTrainingUsed(hocrfn string) (string, error) {
+	b, err := ioutil.ReadFile(hocrfn)
+	if err != nil {
+		return "", err
+	}
+
+	var par hocrPars
+	err = xml.Unmarshal(b, &par)
+	if err != nil {
+		return "", err
+	}
+
+	if len(par.Par) < 1 {
+		return "", fmt.Errorf("No <p> tags found")
+	}
+
+	return par.Par[0].Lang, nil
+}
+
+// walker returns a walkfunc that checks for hocr and best files,
+// and uses them to fill the bookstats map & structure. Note that
+// the stat file is read when the best file is read, as they need
+// to be parsed together to get the statistics we're interested
+// in.
 func walker(bookstats *Bookstats) filepath.WalkFunc {
 	return func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -66,12 +100,17 @@ func walker(bookstats *Bookstats) filepath.WalkFunc {
 
 		_, ok := (*bookstats)[prefix]
 		if !ok {
-			(*bookstats)[prefix] = stat{year: year}
+			(*bookstats)[prefix] = &stat{year: year}
 		}
 
 		switch ext {
 		case "hocr":
-			// TODO: parse hocr enough to get training used
+			training, err := getTrainingUsed(fpath)
+			if err != nil {
+				log.Printf("Warning: failed to get training used from %s: %v\n", fpath, err)
+				return nil
+			}
+			(*bookstats)[prefix].training = training
 		case "best":
 			// TODO: read conf also and fill in mean and stddev
 		}
@@ -111,7 +150,7 @@ func main() {
 	defer f.Close()
 	csvw := csv.NewWriter(f)
 
-	csvw.Write([]string{"Year", "Name", "Mean", "Standard Deviation", "Training"})
+	csvw.Write([]string{"Name", "Year", "Mean", "Standard Deviation", "Training"})
 	for name, stats := range bookstats {
 		year := fmt.Sprintf("%d", stats.year)
 		mean := fmt.Sprintf("%0.1f", stats.mean)
