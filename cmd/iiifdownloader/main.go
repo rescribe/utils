@@ -316,7 +316,7 @@ func detectService(url string) string {
 	case strings.HasPrefix(url, dfgPrefix):
 		return "dfg"
 	}
-	return ""
+	return "iiifmanifest"
 }
 
 func main() {
