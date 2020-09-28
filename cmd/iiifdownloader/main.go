@@ -153,7 +153,14 @@ func parseIIIFManifest(u string) ([]string, error) {
 
 	for _, canvas := range v.Sequences[0].Canvases {
 		for _, image := range canvas.Images {
-			urls = append(urls, image.Resource.Id)
+			u := image.Resource.Id
+			// iiif.bodleian.ox.ac.uk serves manifests that use an ID which
+			// redirects to a info.json unless we manually add the appropriate
+			// iiif parameters.
+			if !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") {
+				u += "/full/full/0/native.jpg"
+			}
+			urls = append(urls, u)
 		}
 	}
 
