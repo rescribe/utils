@@ -25,8 +25,8 @@ Currently supports the following IIIF using services:
 - BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
 - BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
 - DFG Viewer      example url: http://dfg-viewer.de/show?set%%5Bmets%%5D=http%%3A%%2F%%2Fdaten.digitale-sammlungen.de%%2F~db%%2Fmets%%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
-- IIIF Manifest (TODO)
-- METS Manifest (TODO)
+- IIIF Manifest   example url: https://iiif.bodleian.ox.ac.uk/iiif/manifest/441db95d-cdff-472e-bb2d-b46f043db82d.json
+- METS Manifest   example url: https://daten.digitale-sammlungen.de/~db/mets/bsb10132387_mets.xml
 
 `
 
@@ -305,7 +305,27 @@ func sanitiseUrl(u string) string {
 	return s
 }
 
+// detectService finds which service to use based on the
+// url passed to it.
+func detectService(url string) string {
+	switch {
+	case strings.HasSuffix(url, "/manifest"):
+		return "iiifmanifest"
+	case strings.HasSuffix(url, "mets.xml"):
+		return "mets"
+	case strings.HasPrefix(url, bnfPrefix):
+		return "bnf"
+	case strings.HasPrefix(url, bsbPrefix):
+		return "bsb"
+	case strings.HasPrefix(url, dfgPrefix):
+		return "dfg"
+	}
+	return ""
+}
+
 func main() {
+	service := flag.String("service", "", "Force use of a specific service rather than autodetecting based on the URL (choose one of: bnf, bsb, mets, iiifmanifest)")
+	dir := flag.String("bookdir", "", "Save book pages to this directory")
 	forcemets := flag.Bool("mets", false, "Force METS metadata to be used (BSB / MDZ only)")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
@@ -326,9 +346,28 @@ func main() {
 	var pgUrls []string
 	var noPgNums bool
 	var err error
+	var useservice string
 
-	switch {
-	case strings.HasPrefix(u, bnfPrefix):
+	if *dir != "" {
+		bookdir = *dir
+	}
+
+	if *service == "" {
+		useservice = detectService(u)
+	} else {
+		useservice = *service
+	}
+
+	switch *service {
+	case "iiifmanifest":
+		if bookdir == "" {
+			bookdir = "iiifbook"
+		}
+		pgUrls, err = parseMets(u)
+	}
+
+	switch useservice {
+	case "bnf":
 		f := strings.Split(u[len(bnfPrefix):], "/")
 		if len(f) < 2 {
 			log.Fatalln("Failed to extract BNF book ID from URL")
@@ -341,7 +380,9 @@ func main() {
 			lastpart = f[1][0:dot]
 		}
 		bookid := f[0] + "/" + lastpart
-		bookdir = f[0] + "-" + lastpart
+		if bookdir == "" {
+			bookdir = f[0] + "-" + lastpart
+		}
 
 		pgurlStart = "https://gallica.bnf.fr/iiif/ark:/" + bookid + "/f"
 		pgurlEnd = "/full/full/0/native.jpg"
@@ -351,13 +392,15 @@ func main() {
 		// the missing ones in less good quality from an alternative URL.
 		pgurlAltStart = "https://gallica.bnf.fr/ark:/" + bookid + "/f"
 		pgurlAltEnd = ".highres"
-	case strings.HasPrefix(u, bsbPrefix):
+	case "bsb":
 		f := strings.Split(u[len(bsbPrefix):], "_")
 		if len(f) < 2 {
-			log.Fatalln("Failed to extract BNF book ID from URL")
+			log.Fatalln("Failed to extract BSB book ID from URL")
 		}
 		bookid := f[0]
-		bookdir = bookid
+		if bookdir == "" {
+			bookdir = bookid
+		}
 		iiifurl := "https://api.digitale-sammlungen.de/iiif/presentation/v2/" + bookid + "/manifest"
 
 		if *forcemets {
@@ -369,7 +412,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error parsing manifest url %s: %v\n", iiifurl, err)
 		}
-	case strings.HasPrefix(u, dfgPrefix):
+	case "dfg":
 		// dfg can have a url encoded mets url in several parts of the viewer url
 		metsNames := []string{"set[mets]", "tx_dlf[id]"}
 		var metsurl string
@@ -396,14 +439,32 @@ func main() {
 
 		b := path.Base(metsurl)
 		f := strings.Split(b, "_")
-		bookdir = f[0]
+		if bookdir == "" {
+			bookdir = f[0]
+		}
 
 		pgUrls, err = parseMets(metsurl)
 		if err != nil {
 			log.Fatalf("Error parsing mets url %s: %v\n", metsurl, err)
 		}
+	case "iiifmanifest":
+		if bookdir == "" {
+			bookdir = "iiifbook"
+		}
+		pgUrls, err = parseIIIFManifest(u)
+		if err != nil {
+			log.Fatalf("Error parsing iiif manifest url %s: %v\n", u, err)
+		}
+	case "mets":
+		if bookdir == "" {
+			bookdir = "metsbook"
+		}
+		pgUrls, err = parseMets(u)
+		if err != nil {
+			log.Fatalf("Error parsing mets url %s: %v\n", u, err)
+		}
 	default:
-		log.Fatalln("Error: generic IIIF downloading not supported yet")
+		log.Fatalln("Error: failed to autodetect service type, or invalid service type given; specify with the -service flag")
 	}
 
 	err = os.MkdirAll(bookdir, 0777)
