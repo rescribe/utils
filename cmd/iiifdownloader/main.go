@@ -16,7 +16,13 @@ import (
 	"strings"
 )
 
-// TODO: add tests
+// TODO: Add tests
+// TODO: Download using a series of 256x256 tiles which we then stitch
+//       together, rather than just relying on full/full providing a
+//       full size image. Most iiif servers will return the full size
+//       version directly if full/full is requested, but at least
+//       iiif.bodleian.ox.ac.uk only returns a 1000x1000 image this way.
+
 const usage = `Usage: iiifdownloader [-mets] url
 
 Downloads all pages from a IIIF server.
