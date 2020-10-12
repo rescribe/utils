@@ -109,6 +109,10 @@ func getMeanStddevOfBest(bestfn string, conffn string) (float64, float64, error)
 		if !ok {
 			continue
 		}
+		// skip zero confidence pages, as they're likely blank pages
+		if c == 0 {
+			continue
+		}
 		bestConfs = append(bestConfs, c)
 	}
 
