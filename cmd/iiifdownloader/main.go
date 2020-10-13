@@ -11,9 +11,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // TODO: Add tests
@@ -238,19 +240,40 @@ func dlPage(bookdir, u string) error {
 		return fmt.Errorf("Error downloading page %s: %v", u, err)
 	}
 
-	f, err := os.Create(fn)
-	defer f.Close()
-	if err != nil {
-		return fmt.Errorf("Error creating file %s: %v\n", fn, err)
-	}
-	_, err = io.Copy(f, resp.Body)
-	if err != nil {
-		_ = f.Close()
+	// We do the file writing in a goroutine so that we can catch
+	// SIGINT (Ctrl-C) and ensure the file is removed, to ensure it
+	// can't be left in a half-written state. This is important so
+	// SIGINT can be used to stop the download in a state that it
+	// can safely be continued later by rerunning iiifdownloader.
+
+	sigint := make(chan os.Signal)
+	done := make(chan error)
+	signal.Notify(sigint, syscall.SIGINT)
+
+	go func() {
+		f, err := os.Create(fn)
+		defer f.Close()
+		if err != nil {
+			done <- fmt.Errorf("Error creating file %s: %v\n", fn, err)
+		}
+		_, err = io.Copy(f, resp.Body)
+		if err != nil {
+			_ = f.Close()
+			_ = os.Remove(fn)
+			done <- fmt.Errorf("Error writing file %s: %v\n", fn, err)
+		}
+		done <- nil
+	}()
+
+	select {
+	case <-sigint:
 		_ = os.Remove(fn)
-		return fmt.Errorf("Error writing file %s: %v\n", fn, err)
+		os.Exit(0)
+	case err = <-done:
 	}
 
-	return nil
+	signal.Reset(syscall.SIGINT)
+	return err
 }
 
 // dlNoPgNums downloads all pages, starting from zero, until either
