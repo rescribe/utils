@@ -245,6 +245,8 @@ func dlPage(bookdir, u string) error {
 	}
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(fn)
 		return fmt.Errorf("Error writing file %s: %v\n", fn, err)
 	}
 
@@ -262,11 +264,11 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 		u := fmt.Sprintf("%s%d%s", pgurlStart, pgnum, pgurlEnd)
 
 		err := dlPage(bookdir, u)
-		if err != nil && strings.Index(err.Error(), "Error downloading page - 404 not found") == -1 {
+		if err != nil && strings.Index(err.Error(), "Error downloading page - 404 not found") == 0 {
 			fmt.Printf("Got 404, assuming end of pages, for page %d, %s\n", pgnum, u)
 			return nil
 		}
-		if err != nil && strings.Index(err.Error(), "Error downloading page") == -1 {
+		if err != nil && strings.Index(err.Error(), "Error downloading page") == 0 {
 			if pgurlAltStart == "" && pgurlAltEnd == "" {
 				return fmt.Errorf("No alternative URL to try, book failed (or ended, hopefully)")
 			}
@@ -274,9 +276,9 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 			fmt.Printf("Trying to redownload page %d at lower quality\n", pgnum)
 			u = fmt.Sprintf("%s%d%s", pgurlAltStart, pgnum, pgurlAltEnd)
 			err = dlPage(bookdir, u)
-			if err != nil {
-				return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
-			}
+		}
+		if err != nil {
+			return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
 		}
 
 		// Check that the last two downloaded files aren't identical, as this
