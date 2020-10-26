@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -74,7 +75,7 @@ func filesAreIdentical(fn1, fn2 string) (bool, error) {
 // parseMets downloads and parses an XML encoded METS file,
 // returning a list of image URLs.
 // Example URL: https://daten.digitale-sammlungen.de/~db/mets/bsb10132387_mets.xml
-func parseMets(u string) ([]string, error) {
+func parseMets(u string, c *http.Client) ([]string, error) {
 	var urls []string
 
 	// designed to be unmarshalled by encoding/xml's Unmarshal()
@@ -87,7 +88,7 @@ func parseMets(u string) ([]string, error) {
 		} `xml:"fileSec>fileGrp"`
 	}
 
-	resp, err := http.Get(u)
+	resp, err := c.Get(u)
 	if err != nil {
 		return urls, fmt.Errorf("Error downloading mets %s: %v", u, err)
 	}
@@ -122,7 +123,7 @@ func parseMets(u string) ([]string, error) {
 // parseIIIFManifest downloads and parses a JSON encoded IIIF
 // Manifest file, returning a list of image URLs.
 // Example URL: https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10132387/manifest
-func parseIIIFManifest(u string) ([]string, error) {
+func parseIIIFManifest(u string, c *http.Client) ([]string, error) {
 	var urls []string
 
 	// designed to be unmarshalled by encoding/json's Unmarshal()
@@ -138,7 +139,7 @@ func parseIIIFManifest(u string) ([]string, error) {
 		}
 	}
 
-	resp, err := http.Get(u)
+	resp, err := c.Get(u)
 	if err != nil {
 		return urls, fmt.Errorf("Error downloading IIIF manifest %s: %v", u, err)
 	}
@@ -215,7 +216,7 @@ func urlToPgName(u string) string {
 }
 
 // dlPage downloads a page url to bookdir.
-func dlPage(bookdir, u string) error {
+func dlPage(bookdir, u string, c *http.Client) error {
 	name := urlToPgName(u)
 	fn := path.Join(bookdir, name)
 
@@ -227,7 +228,7 @@ func dlPage(bookdir, u string) error {
 
 	fmt.Printf("Downloading page %s to %s\n", u, fn)
 
-	resp, err := http.Get(u)
+	resp, err := c.Get(u)
 	if err != nil {
 		return fmt.Errorf("Error downloading page %s: %v", u, err)
 	}
@@ -279,14 +280,14 @@ func dlPage(bookdir, u string) error {
 // dlNoPgNums downloads all pages, starting from zero, until either
 // a 404 is returned, or identical files are returned for two subsequent
 // pages (the latter being the behaviour of BNF's server).
-func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string) error {
+func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string, c *http.Client) error {
 	pgnum := 0
 	for {
 		pgnum++
 
 		u := fmt.Sprintf("%s%d%s", pgurlStart, pgnum, pgurlEnd)
 
-		err := dlPage(bookdir, u)
+		err := dlPage(bookdir, u, c)
 		if err != nil && strings.Index(err.Error(), "Error downloading page - 404 not found") == 0 {
 			fmt.Printf("Got 404, assuming end of pages, for page %d, %s\n", pgnum, u)
 			return nil
@@ -298,7 +299,7 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 
 			fmt.Printf("Trying to redownload page %d at lower quality\n", pgnum)
 			u = fmt.Sprintf("%s%d%s", pgurlAltStart, pgnum, pgurlAltEnd)
-			err = dlPage(bookdir, u)
+			err = dlPage(bookdir, u, c)
 		}
 		if err != nil {
 			return fmt.Errorf("Error downloading page %d, %s: %v\n", pgnum, u, err)
@@ -361,6 +362,7 @@ func main() {
 	service := flag.String("service", "", "Force use of a specific service rather than autodetecting based on the URL (choose one of: bnf, bsb, mets, iiifmanifest)")
 	dir := flag.String("bookdir", "", "Save book pages to this directory")
 	forcemets := flag.Bool("mets", false, "Force METS metadata to be used (BSB / MDZ only)")
+	insecure := flag.Bool("insecure", false, "Ignore TLS errors")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
 		flag.PrintDefaults()
@@ -381,6 +383,7 @@ func main() {
 	var noPgNums bool
 	var err error
 	var useservice string
+	var client *http.Client
 
 	if *dir != "" {
 		bookdir = *dir
@@ -397,7 +400,19 @@ func main() {
 		if bookdir == "" {
 			bookdir = "iiifbook"
 		}
-		pgUrls, err = parseMets(u)
+		pgUrls, err = parseMets(u, client)
+	}
+
+	if *insecure {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	} else {
+		client = http.DefaultClient
 	}
 
 	switch useservice {
@@ -439,9 +454,9 @@ func main() {
 
 		if *forcemets {
 			iiifurl = "https://daten.digitale-sammlungen.de/~db/mets/" + bookid + "_mets.xml"
-			pgUrls, err = parseMets(iiifurl)
+			pgUrls, err = parseMets(iiifurl, client)
 		} else {
-			pgUrls, err = parseIIIFManifest(iiifurl)
+			pgUrls, err = parseIIIFManifest(iiifurl, client)
 		}
 		if err != nil {
 			log.Fatalf("Error parsing manifest url %s: %v\n", iiifurl, err)
@@ -477,7 +492,7 @@ func main() {
 			bookdir = f[0]
 		}
 
-		pgUrls, err = parseMets(metsurl)
+		pgUrls, err = parseMets(metsurl, client)
 		if err != nil {
 			log.Fatalf("Error parsing mets url %s: %v\n", metsurl, err)
 		}
@@ -485,7 +500,7 @@ func main() {
 		if bookdir == "" {
 			bookdir = "iiifbook"
 		}
-		pgUrls, err = parseIIIFManifest(u)
+		pgUrls, err = parseIIIFManifest(u, client)
 		if err != nil {
 			log.Fatalf("Error parsing iiif manifest url %s: %v\n", u, err)
 		}
@@ -493,7 +508,7 @@ func main() {
 		if bookdir == "" {
 			bookdir = "metsbook"
 		}
-		pgUrls, err = parseMets(u)
+		pgUrls, err = parseMets(u, client)
 		if err != nil {
 			log.Fatalf("Error parsing mets url %s: %v\n", u, err)
 		}
@@ -508,13 +523,13 @@ func main() {
 
 	if len(pgUrls) > 0 {
 		for _, v := range pgUrls {
-			err = dlPage(bookdir, v)
+			err = dlPage(bookdir, v, client)
 			if err != nil {
 				log.Fatalf("Error downloading page: %v\n", err)
 			}
 		}
 	} else if noPgNums {
-		err = dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd)
+		err = dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd, client)
 		if err != nil {
 			log.Fatalf("Error downloading pages: %v\n", err)
 		}
