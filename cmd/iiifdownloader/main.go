@@ -24,7 +24,8 @@ import (
 //       together, rather than just relying on full/full providing a
 //       full size image. Most iiif servers will return the full size
 //       version directly if full/full is requested, but at least
-//       iiif.bodleian.ox.ac.uk only returns a 1000x1000 image this way.
+//       iiif.bodleian.ox.ac.uk only returns a 1000x1000 image this way,
+//       and e-rara.ch similarly only returns a 1000 width image.
 
 const usage = `Usage: iiifdownloader [-mets] url
 
@@ -34,7 +35,7 @@ Currently supports the following IIIF using services:
 - BNF's Gallica   example url: https://gallica.bnf.fr/ark:/12148/bpt6k6468158v
 - BSB / MDZ       example url: https://reader.digitale-sammlungen.de//de/fs1/object/display/bsb10132387_00005.html
 - DFG Viewer      example url: http://dfg-viewer.de/show?set%%5Bmets%%5D=http%%3A%%2F%%2Fdaten.digitale-sammlungen.de%%2F~db%%2Fmets%%2Fbsb11274872_mets.xml&cHash=fd18451ee968c125ab2bdbfd3717eae6
-- IIIF Manifest   example url: https://iiif.bodleian.ox.ac.uk/iiif/manifest/441db95d-cdff-472e-bb2d-b46f043db82d.json https://iiif.harvardartmuseums.org/manifests/object/299843
+- IIIF Manifest   example url: https://iiif.bodleian.ox.ac.uk/iiif/manifest/441db95d-cdff-472e-bb2d-b46f043db82d.json https://iiif.harvardartmuseums.org/manifests/object/299843 https://www.e-rara.ch/i3f/v20/13172919/manifest
 - METS Manifest   example url: https://daten.digitale-sammlungen.de/~db/mets/bsb10132387_mets.xml
 
 `
@@ -166,7 +167,8 @@ func parseIIIFManifest(u string, c *http.Client) ([]string, error) {
 			// iiif.bodleian.ox.ac.uk serves manifests that use an ID which
 			// redirects to a info.json unless we manually add the appropriate
 			// iiif parameters.
-			if !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") {
+			if strings.HasPrefix(u, "https://iiif.bodleian.ox.ac.uk") &&
+			   !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") {
 				u += "/full/full/0/native.jpg"
 			}
 			urls = append(urls, u)
