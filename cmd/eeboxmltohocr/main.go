@@ -111,6 +111,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not write file %s: %v\n", fn, err)
 		}
+		f.Close() // do this explicitly so we don't end up with too many open simultaneously
 	}
 }
 
