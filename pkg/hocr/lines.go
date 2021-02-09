@@ -54,7 +54,7 @@ func LineText(l OcrLine) string {
 	return linetext
 }
 
-func parseLineDetails(h Hocr, dir string, name string) (line.Details, error) {
+func parseLineDetails(h Hocr, dir string) (line.Details, error) {
 	lines := make(line.Details, 0)
 
 	for _, p := range h.Pages {
@@ -99,7 +99,11 @@ func parseLineDetails(h Hocr, dir string, name string) (line.Details, error) {
 			ln.Name = l.Id
 			ln.Avgconf = (totalconf / float64(num)) / 100
 			ln.Text = LineText(l)
-			ln.OcrName = name
+			imgpath, err := imagePath(p.Title)
+			if err != nil {
+				return lines, err
+			}
+			ln.OcrName = strings.TrimSuffix(filepath.Base(imgpath), ".png")
 			if gray != nil {
 				var imgd line.ImgDirect
 				imgd.Img = gray.SubImage(image.Rect(coords[0], coords[1], coords[2], coords[3]))
@@ -127,8 +131,7 @@ func GetLineDetails(hocrfn string) (line.Details, error) {
 		return newlines, err
 	}
 
-	n := strings.Replace(filepath.Base(hocrfn), ".hocr", "", 1)
-	return parseLineDetails(h, filepath.Dir(hocrfn), n)
+	return parseLineDetails(h, filepath.Dir(hocrfn))
 }
 
 // GetLineBasics parses a hocr file and returns a corresponding
@@ -146,6 +149,5 @@ func GetLineBasics(hocrfn string) (line.Details, error) {
 		return newlines, err
 	}
 
-	n := strings.Replace(filepath.Base(hocrfn), ".hocr", "", 1)
-	return parseLineDetails(h, filepath.Dir(hocrfn), n)
+	return parseLineDetails(h, filepath.Dir(hocrfn))
 }
