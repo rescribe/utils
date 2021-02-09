@@ -16,7 +16,12 @@ import (
 )
 
 type Hocr struct {
-	Lines []OcrLine `xml:"body>div>div>p>span"`
+	Pages []Page `xml:"body>div"`
+}
+
+type Page struct {
+	Lines []OcrLine `xml:"div>p>span"`
+	Title string    `xml:"title,attr"`
 }
 
 type OcrLine struct {
@@ -51,6 +56,16 @@ func wordConf(s string) (float64, error) {
 	}
 	conf := re.FindStringSubmatch(s)
 	return strconv.ParseFloat(conf[1], 64)
+}
+
+// Returns the image path for a page from a ocr_page title
+func imagePath(s string) (string, error) {
+	re, err := regexp.Compile(`image ["']([^"']+)["']`)
+	if err != nil {
+		return "", err
+	}
+	m := re.FindStringSubmatch(s)
+	return m[1], nil
 }
 
 // BoxCoords parses bbox coordinate strings
@@ -102,9 +117,10 @@ func GetText(hocrfn string) (string, error) {
 		return s, err
 	}
 
-
-	for _, l := range h.Lines {
-		s += LineText(l) + "\n"
+	for _, p := range h.Pages {
+		for _, l := range p.Lines {
+			s += LineText(l) + "\n"
+		}
 	}
 	return s, nil
 }
@@ -123,14 +139,16 @@ func GetAvgConf(hocrfn string) (float64, error) {
 	}
 
 	var total, num float64
-	for _, l := range h.Lines {
-		for _, w := range l.Words {
-			c, err := wordConf(w.Title)
-			if err != nil {
-				return 0, err
+	for _, p := range h.Pages {
+		for _, l := range p.Lines {
+			for _, w := range l.Words {
+				c, err := wordConf(w.Title)
+				if err != nil {
+					return 0, err
+				}
+				total += c
+				num++
 			}
-			total += c
-			num++
 		}
 	}
 	if num == 0 {
@@ -155,15 +173,17 @@ func GetWordConfs(hocrfn string) ([]float64, error) {
 		return confs, err
 	}
 
-	for _, l := range h.Lines {
-                for _, w := range l.Words {
-                        c, err := wordConf(w.Title)
-                        if err != nil {
-                                return confs, err
-                        }
-			confs = append(confs, c)
-                }
-        }
+	for _, p := range h.Pages {
+		for _, l := range p.Lines {
+			for _, w := range l.Words {
+				c, err := wordConf(w.Title)
+				if err != nil {
+					return confs, err
+				}
+				confs = append(confs, c)
+			}
+		}
+	}
 
 	return confs, nil
 }

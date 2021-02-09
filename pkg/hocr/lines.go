@@ -8,6 +8,7 @@ package hocr
 //       be sorted easily
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	_ "image/jpeg"
@@ -21,7 +22,7 @@ import (
 )
 
 // LineText extracts the text from an OcrLine
-func LineText(l OcrLine) (string) {
+func LineText(l OcrLine) string {
 	linetext := ""
 
 	linetext = l.Text
@@ -53,37 +54,60 @@ func LineText(l OcrLine) (string) {
 	return linetext
 }
 
-func parseLineDetails(h Hocr, i *image.Gray, name string) (line.Details, error) {
+func parseLineDetails(h Hocr, dir string, name string) (line.Details, error) {
 	lines := make(line.Details, 0)
 
-	for _, l := range h.Lines {
-		totalconf := float64(0)
-		num := 0
-		for _, w := range l.Words {
-			c, err := wordConf(w.Title)
-			if err != nil {
-				return lines, err
-			}
-			num++
-			totalconf += c
-		}
-
-		coords, err := BoxCoords(l.Title)
+	for _, p := range h.Pages {
+		imgpath, err := imagePath(p.Title)
 		if err != nil {
 			return lines, err
 		}
+		imgpath = filepath.Join(dir, filepath.Base(imgpath))
 
-		var ln line.Detail
-		ln.Name = l.Id
-		ln.Avgconf = (totalconf / float64(num)) / 100
-		ln.Text = LineText(l)
-		ln.OcrName = name
-		if i != nil {
-			var imgd line.ImgDirect
-			imgd.Img = i.SubImage(image.Rect(coords[0], coords[1], coords[2], coords[3]))
-			ln.Img = imgd
+		var img image.Image
+		var gray *image.Gray
+		pngf, err := os.Open(imgpath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: error opening image %s: %v", imgpath, err)
 		}
-		lines = append(lines, ln)
+		defer pngf.Close()
+		img, _, err = image.Decode(pngf)
+		if err == nil {
+			b := img.Bounds()
+			gray = image.NewGray(image.Rect(0, 0, b.Dx(), b.Dy()))
+			draw.Draw(gray, b, img, b.Min, draw.Src)
+		}
+
+		for _, l := range p.Lines {
+			totalconf := float64(0)
+			num := 0
+			for _, w := range l.Words {
+				c, err := wordConf(w.Title)
+				if err != nil {
+					return lines, err
+				}
+				num++
+				totalconf += c
+			}
+
+			coords, err := BoxCoords(l.Title)
+			if err != nil {
+				return lines, err
+			}
+
+			var ln line.Detail
+			ln.Name = l.Id
+			ln.Avgconf = (totalconf / float64(num)) / 100
+			ln.Text = LineText(l)
+			ln.OcrName = name
+			if gray != nil {
+				var imgd line.ImgDirect
+				imgd.Img = gray.SubImage(image.Rect(coords[0], coords[1], coords[2], coords[3]))
+				ln.Img = imgd
+			}
+			lines = append(lines, ln)
+		}
+		pngf.Close()
 	}
 	return lines, nil
 }
@@ -103,22 +127,8 @@ func GetLineDetails(hocrfn string) (line.Details, error) {
 		return newlines, err
 	}
 
-	var img image.Image
-	var gray *image.Gray
-	pngfn := strings.Replace(hocrfn, ".hocr", ".png", 1)
-	pngf, err := os.Open(pngfn)
-	if err == nil {
-		defer pngf.Close()
-		img, _, err = image.Decode(pngf)
-		if err == nil {
-			b := img.Bounds()
-			gray = image.NewGray(image.Rect(0, 0, b.Dx(), b.Dy()))
-			draw.Draw(gray, b, img, b.Min, draw.Src)
-		}
-	}
-
 	n := strings.Replace(filepath.Base(hocrfn), ".hocr", "", 1)
-	return parseLineDetails(h, gray, n)
+	return parseLineDetails(h, filepath.Dir(hocrfn), n)
 }
 
 // GetLineBasics parses a hocr file and returns a corresponding
@@ -137,5 +147,5 @@ func GetLineBasics(hocrfn string) (line.Details, error) {
 	}
 
 	n := strings.Replace(filepath.Base(hocrfn), ".hocr", "", 1)
-	return parseLineDetails(h, nil, n)
+	return parseLineDetails(h, filepath.Dir(hocrfn), n)
 }
