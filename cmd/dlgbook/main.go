@@ -137,6 +137,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't create directory %s: %v", dir, err)
 	}
+	fmt.Printf("Saving book to %s\n", dir)
+
 	cmd := exec.Command("getgbook", bookid)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
