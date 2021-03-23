@@ -89,6 +89,9 @@ func main() {
 			if l.Img == nil {
 				continue
 			}
+			if l.Text == "" {
+				continue
+			}
 			err = saveline(l, *dir)
 			if err != nil {
 				log.Fatal(err)
