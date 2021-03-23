@@ -20,7 +20,7 @@ import (
 	"rescribe.xyz/utils/pkg/line"
 )
 
-const usage = `Usage: extracthocrlines [-d] [-e] file.hocr [file.hocr]
+const usage = `Usage: extracthocrlines [-b] [-d] file.hocr [file.hocr]
 
 Copies the text and corresponding image section for each line
 of a HOCR file into separate files, which is useful for OCR
@@ -64,8 +64,8 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), usage)
 		flag.PrintDefaults()
 	}
+	usebasepath := flag.Bool("b", false, "Use the image path of the .hocr with the .hocr suffix stripped and replaced with .png, rather than the path embedded in the .hocr")
 	dir := flag.String("d", ".", "Directory to save lines in")
-	embeddedimgpath := flag.Bool("e", false, "Use image path embedded in hOCR (rather than the path of the .hocr file with a .png suffix)")
 	flag.Parse()
 	if flag.NArg() < 1 {
 		flag.Usage()
@@ -75,11 +75,11 @@ func main() {
 	for _, f := range flag.Args() {
 		var err error
 		var newlines line.Details
-		if *embeddedimgpath {
-			newlines, err = hocr.GetLineDetails(f)
-		} else {
+		if *usebasepath {
 			imgName := strings.TrimSuffix(f, ".hocr") + ".png"
 			newlines, err = hocr.GetLineDetailsCustomImg(f, imgName)
+		else {
+			newlines, err = hocr.GetLineDetails(f)
 		}
 		if err != nil {
 			log.Fatal(err)
