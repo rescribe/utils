@@ -16,10 +16,21 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"rescribe.xyz/utils/pkg/line"
 )
+
+// Returns the image path for a page from a ocr_page title
+func imagePathFromTitle(s string) (string, error) {
+	re, err := regexp.Compile(`image ["']([^"']+)["']`)
+	if err != nil {
+		return "", err
+	}
+	m := re.FindStringSubmatch(s)
+	return m[1], nil
+}
 
 // LineText extracts the text from an OcrLine
 func LineText(l OcrLine) string {
@@ -54,11 +65,17 @@ func LineText(l OcrLine) string {
 	return linetext
 }
 
-func parseLineDetails(h Hocr, dir string) (line.Details, error) {
+// parseLineDetails parses a Hocr struct into a line.Details
+// struct, including extracted image segments for each line.
+// The image location is taken from imgPath, which can either
+// be imagePathFromTitle (see above) which loads the image
+// path embedded in the title attribute of a hocr page, or
+// a custom handler.
+func parseLineDetails(h Hocr, dir string, imgPath func(string) (string, error)) (line.Details, error) {
 	lines := make(line.Details, 0)
 
 	for _, p := range h.Pages {
-		imgpath, err := imagePath(p.Title)
+		imgpath, err := imgPath(p.Title)
 		if err != nil {
 			return lines, err
 		}
@@ -68,7 +85,7 @@ func parseLineDetails(h Hocr, dir string) (line.Details, error) {
 		var gray *image.Gray
 		pngf, err := os.Open(imgpath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: error opening image %s: %v", imgpath, err)
+			fmt.Fprintf(os.Stderr, "Warning: error opening image %s: %v\n", imgpath, err)
 		}
 		defer pngf.Close()
 		img, _, err = image.Decode(pngf)
@@ -99,7 +116,7 @@ func parseLineDetails(h Hocr, dir string) (line.Details, error) {
 			ln.Name = l.Id
 			ln.Avgconf = (totalconf / float64(num)) / 100
 			ln.Text = LineText(l)
-			imgpath, err := imagePath(p.Title)
+			imgpath, err := imgPath(p.Title)
 			if err != nil {
 				return lines, err
 			}
@@ -131,7 +148,26 @@ func GetLineDetails(hocrfn string) (line.Details, error) {
 		return newlines, err
 	}
 
-	return parseLineDetails(h, filepath.Dir(hocrfn))
+	return parseLineDetails(h, filepath.Dir(hocrfn), imagePathFromTitle)
+}
+
+// GetLineDetailsCustomImg is a variant of GetLineDetails that
+// uses a provided image path for line image extracts, rather
+// than the image name embedded in the .hocr
+func GetLineDetailsCustomImg(hocrfn string, imgfn string) (line.Details, error) {
+	var newlines line.Details
+
+	file, err := ioutil.ReadFile(hocrfn)
+	if err != nil {
+		return newlines, err
+	}
+
+	h, err := Parse(file)
+	if err != nil {
+		return newlines, err
+	}
+
+	return parseLineDetails(h, filepath.Dir(hocrfn), func(s string) (string, error) {return imgfn, nil})
 }
 
 // GetLineBasics parses a hocr file and returns a corresponding
@@ -149,5 +185,5 @@ func GetLineBasics(hocrfn string) (line.Details, error) {
 		return newlines, err
 	}
 
-	return parseLineDetails(h, filepath.Dir(hocrfn))
+	return parseLineDetails(h, filepath.Dir(hocrfn), imagePathFromTitle)
 }

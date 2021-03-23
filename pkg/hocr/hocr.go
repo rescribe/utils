@@ -58,16 +58,6 @@ func wordConf(s string) (float64, error) {
 	return strconv.ParseFloat(conf[1], 64)
 }
 
-// Returns the image path for a page from a ocr_page title
-func imagePath(s string) (string, error) {
-	re, err := regexp.Compile(`image ["']([^"']+)["']`)
-	if err != nil {
-		return "", err
-	}
-	m := re.FindStringSubmatch(s)
-	return m[1], nil
-}
-
 // BoxCoords parses bbox coordinate strings
 func BoxCoords(s string) ([4]int, error) {
 	var coords [4]int
