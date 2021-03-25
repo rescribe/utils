@@ -78,7 +78,7 @@ func main() {
 		if *usebasepath {
 			imgName := strings.TrimSuffix(f, ".hocr") + ".png"
 			newlines, err = hocr.GetLineDetailsCustomImg(f, imgName)
-		else {
+		} else {
 			newlines, err = hocr.GetLineDetails(f)
 		}
 		if err != nil {
