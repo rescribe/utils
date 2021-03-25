@@ -40,6 +40,7 @@ func saveline(l line.Detail, dir string) error {
 	if err != nil {
 		return fmt.Errorf("Error creating file %s: %v", base+".png", err)
 	}
+	defer f.Close()
 
 	err = l.Img.CopyLineTo(f)
 	if err != nil {
@@ -50,6 +51,7 @@ func saveline(l line.Detail, dir string) error {
 	if err != nil {
 		return fmt.Errorf("Error creating file %s: %v", base+".txt", err)
 	}
+	defer f.Close()
 
 	_, err = io.WriteString(f, l.Text)
 	if err != nil {
