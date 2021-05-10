@@ -22,6 +22,8 @@ Google Books (unless given as arguments to dlgbook), and
 saves them into a directory named YEAR_AUTHORSURNAME_Title 
 `
 
+const maxPartLength = 48
+
 // formatAuthors formats a list of authors by just selecting
 // the first one listed, and returning the uppercased final
 // name.
@@ -39,6 +41,10 @@ func formatAuthors(authors []string) string {
 
 	s = strings.ToUpper(s)
 
+	if len(s) > maxPartLength {
+		s = s[:maxPartLength]
+	}
+
 	return s
 }
 
@@ -54,7 +60,11 @@ func mapTitle(r rune) rune {
 // formatTitle formats a title to our preferences, notably
 // by stripping spaces and punctuation characters.
 func formatTitle(title string) string {
-	return strings.Map(mapTitle, title)
+	s := strings.Map(mapTitle, title)
+	if len(s) > maxPartLength {
+		s = s[:maxPartLength]
+	}
+	return s
 }
 
 // getMetadata queries Google Books for metadata we care about
@@ -132,7 +142,7 @@ func main() {
 		}
 	}
 
-	dir := fmt.Sprintf("%s_%s_%s", *year, *author, *title)
+	dir := fmt.Sprintf("%s_%s_%s_%s", *year, *author, *title, bookid)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		log.Fatalf("Couldn't create directory %s: %v", dir, err)
