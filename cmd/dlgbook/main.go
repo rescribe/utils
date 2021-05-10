@@ -45,12 +45,14 @@ func formatAuthors(authors []string) string {
 		s = s[:maxPartLength]
 	}
 
+	s = strings.Map(stripNonLetters, s)
+
 	return s
 }
 
 // mapTitle is a function for strings.Map to strip out
 // unwanted characters from the title.
-func mapTitle(r rune) rune {
+func stripNonLetters(r rune) rune {
 	if !unicode.IsLetter(r) {
 		return -1
 	}
@@ -60,7 +62,7 @@ func mapTitle(r rune) rune {
 // formatTitle formats a title to our preferences, notably
 // by stripping spaces and punctuation characters.
 func formatTitle(title string) string {
-	s := strings.Map(mapTitle, title)
+	s := strings.Map(stripNonLetters, title)
 	if len(s) > maxPartLength {
 		s = s[:maxPartLength]
 	}
