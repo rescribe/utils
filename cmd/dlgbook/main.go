@@ -19,7 +19,7 @@ const usage = `Usage: dlgbook bookid [-a author] [-y year] [-t title] [savedir]
 Downloads all pages from a Google Book, using the getgbook
 tool, extracting the date, author name and title from
 Google Books (unless given as arguments to dlgbook), and
-saves them into a directory named YEAR_AUTHORSURNAME_Title 
+saves them into a directory named YEAR_AUTHORSURNAME_Title_bookid
 `
 
 const maxPartLength = 48
