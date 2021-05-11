@@ -168,7 +168,8 @@ func parseIIIFManifest(u string, c *http.Client) ([]string, error) {
 			// redirects to a info.json unless we manually add the appropriate
 			// iiif parameters.
 			if strings.HasPrefix(u, "https://iiif.bodleian.ox.ac.uk") &&
-			   !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") {
+			   !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") &&
+			   !strings.HasSuffix(u, ".png") {
 				u += "/full/full/0/native.jpg"
 			}
 			urls = append(urls, u)
@@ -185,9 +186,15 @@ func urlToPgName(u string) string {
 	safe := strings.Replace(u, "/", "_", -1)
 
 	b := path.Base(u)
-	if b != "default.jpg" && b != "native.jpg" {
+	ext := path.Ext(b)
+	if ext == "" {
+		ext = ".jpg"
+	}
+
+	if b != "default.jpg" && b != "native.jpg" &&
+	   b != "default.png" && b != "native.png" {
 		if path.Ext(b) == "" {
-			return b + ".jpg"
+			return b + ext
 		}
 		return b
 	}
@@ -211,10 +218,10 @@ func urlToPgName(u string) string {
 
 	pgnumint, err := strconv.Atoi(pgnum)
 	if err != nil {
-		return pgnum + ".jpg"
+		return pgnum + ext
 	}
 
-	return fmt.Sprintf("%04d.jpg", pgnumint)
+	return fmt.Sprintf("%04d%s", pgnumint, ext)
 }
 
 // dlPage downloads a page url to bookdir.
