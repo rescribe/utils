@@ -404,14 +404,6 @@ func main() {
 		useservice = *service
 	}
 
-	switch *service {
-	case "iiifmanifest":
-		if bookdir == "" {
-			bookdir = "iiifbook"
-		}
-		pgUrls, err = parseMets(u, client)
-	}
-
 	if *insecure {
 		client = &http.Client{
 			Transport: &http.Transport{
