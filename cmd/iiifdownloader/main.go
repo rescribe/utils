@@ -82,7 +82,7 @@ func parseMets(u string, c *http.Client) ([]string, error) {
 	// designed to be unmarshalled by encoding/xml's Unmarshal()
 	type metsXML struct {
 		FileGrps []struct {
-			Attr string `xml:"USE,attr"`
+			Attr  string `xml:"USE,attr"`
 			Files []struct {
 				Url string `xml:"href,attr"`
 			} `xml:"file>FLocat"`
@@ -168,8 +168,8 @@ func parseIIIFManifest(u string, c *http.Client) ([]string, error) {
 			// redirects to a info.json unless we manually add the appropriate
 			// iiif parameters.
 			if strings.HasPrefix(u, "https://iiif.bodleian.ox.ac.uk") &&
-			   !strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") &&
-			   !strings.HasSuffix(u, ".png") {
+				!strings.HasSuffix(u, ".jpg") && !strings.HasSuffix(u, ".jpeg") &&
+				!strings.HasSuffix(u, ".png") {
 				u += "/full/full/0/native.jpg"
 			}
 			urls = append(urls, u)
@@ -192,7 +192,7 @@ func urlToPgName(u string) string {
 	}
 
 	if b != "default.jpg" && b != "native.jpg" &&
-	   b != "default.png" && b != "native.png" {
+		b != "default.png" && b != "native.png" {
 		if path.Ext(b) == "" {
 			return b + ext
 		}
@@ -203,7 +203,7 @@ func urlToPgName(u string) string {
 	if len(f) < 5 {
 		return safe
 	}
-	name := f[len(f) - 5]
+	name := f[len(f)-5]
 
 	f2 := strings.Split(name, "_")
 	var numpart, pgnum string

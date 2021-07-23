@@ -167,7 +167,7 @@ func GetLineDetailsCustomImg(hocrfn string, imgfn string) (line.Details, error) 
 		return newlines, err
 	}
 
-	return parseLineDetails(h, filepath.Dir(hocrfn), func(s string) (string, error) {return imgfn, nil})
+	return parseLineDetails(h, filepath.Dir(hocrfn), func(s string) (string, error) { return imgfn, nil })
 }
 
 // GetLineBasics parses a hocr file and returns a corresponding

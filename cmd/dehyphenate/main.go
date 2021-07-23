@@ -34,7 +34,7 @@ func dehyphenateString(in string) string {
 		words := strings.Split(line, " ")
 		last := words[len(words)-1]
 		// the - 2 here is to account for a trailing newline and counting from zero
-		if len(last) > 0 && last[len(last) - 1] == '-' && i < len(lines) - 2 {
+		if len(last) > 0 && last[len(last)-1] == '-' && i < len(lines)-2 {
 			nextwords := strings.Split(lines[i+1], " ")
 			if len(nextwords) > 0 {
 				line = line[0:len(line)-1] + nextwords[0]
@@ -80,7 +80,7 @@ func main() {
 		for i, l := range h.Lines {
 			w := l.Words[len(l.Words)-1]
 			if len(w.Chars) == 0 {
-				if len(w.Text) > 0 && w.Text[len(w.Text) - 1] == '-' {
+				if len(w.Text) > 0 && w.Text[len(w.Text)-1] == '-' {
 					h.Lines[i].Words[len(l.Words)-1].Text = w.Text[0:len(w.Text)-1] + h.Lines[i+1].Words[0].Text
 					h.Lines[i+1].Words[0].Text = ""
 				}

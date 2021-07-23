@@ -51,7 +51,7 @@ func addPage(pgs *[]Page, number int, text string) {
 	if added == 0 {
 		newpg := Page{number, text}
 		*pgs = append(*pgs, newpg)
-	}	
+	}
 }
 
 func main() {
@@ -100,14 +100,14 @@ func main() {
 	}
 
 	for _, pg := range pgs {
-		fn := fmt.Sprintf("%s-%03d.hocr", flag.Arg(1), pg.number - 1)
+		fn := fmt.Sprintf("%s-%03d.hocr", flag.Arg(1), pg.number-1)
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatalf("Could not create file %s: %v\n", fn, err)
 		}
 		defer f.Close()
 
-		_, err = io.WriteString(f, hocrHeader + pg.text + hocrFooter)
+		_, err = io.WriteString(f, hocrHeader+pg.text+hocrFooter)
 		if err != nil {
 			log.Fatalf("Could not write file %s: %v\n", fn, err)
 		}

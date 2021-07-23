@@ -18,8 +18,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 const usage = `Usage: analysestats statsdir csvfile
@@ -127,7 +127,7 @@ func getMeanStddevOfBest(bestfn string, conffn string) (float64, float64, error)
 		for _, v := range bestConfs {
 			a += (float64(v) - mean) * (float64(v) - mean)
 		}
-		variance := a / float64(len(bestConfs) - 1)
+		variance := a / float64(len(bestConfs)-1)
 		stddev = math.Sqrt(variance)
 	}
 
@@ -153,7 +153,7 @@ func walker(bookstats *Bookstats) filepath.WalkFunc {
 		if len(parts) < 2 || len(b) < 6 {
 			return nil
 		}
-		prefix := b[0:len(b)-6] // 6 is length of '-hocr' + 1
+		prefix := b[0 : len(b)-6] // 6 is length of '-hocr' + 1
 		ext := parts[len(parts)-1]
 
 		if ext != "hocr" && ext != "best" {
