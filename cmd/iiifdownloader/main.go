@@ -332,7 +332,7 @@ func dlNoPgNums(bookdir, pgurlStart, pgurlEnd, pgurlAltStart, pgurlAltEnd string
 			fmt.Println("Last 2 pages were identical, looks like it's the end of the book")
 			err = os.Remove(fn1)
 			if err != nil {
-				return fmt.Errorf("Error removing dupilicate page %d: %v", fn1, err)
+				return fmt.Errorf("Error removing dupilicate page %s: %v", fn1, err)
 			}
 			return nil
 		}
