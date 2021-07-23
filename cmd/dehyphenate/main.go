@@ -77,15 +77,17 @@ func main() {
 			log.Fatal(err)
 		}
 
-		for i, l := range h.Lines {
-			w := l.Words[len(l.Words)-1]
-			if len(w.Chars) == 0 {
-				if len(w.Text) > 0 && w.Text[len(w.Text)-1] == '-' {
-					h.Lines[i].Words[len(l.Words)-1].Text = w.Text[0:len(w.Text)-1] + h.Lines[i+1].Words[0].Text
-					h.Lines[i+1].Words[0].Text = ""
+		for _, p := range h.Pages {
+			for i, l := range p.Lines {
+				w := l.Words[len(l.Words)-1]
+				if len(w.Chars) == 0 {
+					if len(w.Text) > 0 && w.Text[len(w.Text)-1] == '-' {
+						p.Lines[i].Words[len(l.Words)-1].Text = w.Text[0:len(w.Text)-1] + p.Lines[i+1].Words[0].Text
+						p.Lines[i+1].Words[0].Text = ""
+					}
+				} else {
+					log.Printf("TODO: handle OcrChar")
 				}
-			} else {
-				log.Printf("TODO: handle OcrChar")
 			}
 		}
 	} else {
